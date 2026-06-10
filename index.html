@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PT. Aurora World Cianjur — Machinery Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f0efe9;
+  --border: rgba(0,0,0,0.10);
+  --border2: rgba(0,0,0,0.06);
+  --text: #1a1a18;
+  --text2: #6b6b66;
+  --text3: #a0a09a;
+  --red: #c0392b;
+  --red-bg: #fdf0ee;
+  --red-bar: rgba(192,57,43,0.82);
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 0;
+}
+
+.page-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.page-header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+.page-header .sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.refresh-btn {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; padding: 7px 16px; cursor: pointer;
+  border-radius: var(--radius-sm);
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); font-family: inherit;
+  transition: background 0.15s;
+}
+.refresh-btn:hover { background: #e8e7e0; }
+.updated-tag { font-size: 11px; color: var(--text3); }
+
+.main { max-width: 960px; margin: 0 auto; padding: 28px 24px 60px; }
+
+/* METRICS */
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+.metric {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 16px 18px;
+}
+.metric .lbl { font-size: 10px; color: var(--text2); line-height: 1.6; margin-bottom: 6px; }
+.metric .val { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+.metric.danger .val { color: var(--red); }
+
+/* CARD */
+.card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 20px 22px; margin-bottom: 14px;
+}
+.card-title {
+  font-size: 10px; font-weight: 600; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 16px;
+}
+
+/* SECTION BOXES */
+.group-label {
+  font-size: 10px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 8px; padding-bottom: 5px;
+  border-bottom: 1px solid var(--border2);
+}
+.prod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.infra-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.sec-box {
+  background: var(--surface2); border-radius: var(--radius-sm); padding: 11px 13px;
+}
+.sec-name { font-size: 11px; font-weight: 500; color: var(--text); margin-bottom: 7px; }
+.bar-track {
+  background: var(--bg); border-radius: 3px; height: 7px;
+  width: 100%; position: relative; margin-bottom: 5px;
+}
+.bar-total { height: 7px; border-radius: 3px; position: absolute; top:0; left:0; }
+.bar-broken { height: 7px; border-radius: 3px; position: absolute; top:0; left:0; background: var(--red-bar); }
+.sec-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--text2); }
+.broken-tag { color: var(--red); font-weight: 500; }
+.scale-note { font-size: 10px; color: var(--text3); text-align: right; margin-top: 6px; }
+
+/* ROW 2 */
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.row2 .card { margin-bottom: 0; }
+
+/* RUSAK */
+.rusak-item { display: flex; align-items: flex-start; gap: 9px; padding: 8px 0; border-bottom: 1px solid var(--border2); }
+.rusak-item:last-child { border-bottom: none; }
+.rusak-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); flex-shrink: 0; margin-top: 4px; }
+.rusak-name { font-size: 11px; color: var(--text); }
+.rusak-detail { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+/* PIE */
+.chart-wrap { position: relative; width: 100%; height: 230px; }
+.legend-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text2); }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* SECTION GRID */
+.section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.section-chip { background: var(--surface2); border-radius: var(--radius-sm); padding: 11px 13px; }
+.chip-kr { font-size: 12px; font-weight: 600; color: var(--text); }
+.chip-en { font-size: 10px; color: var(--text2); }
+.chip-id { font-size: 10px; color: var(--text3); margin-bottom: 5px; }
+.chip-count { font-size: 22px; font-weight: 600; margin: 4px 0 2px; letter-spacing: -0.02em; }
+.chip-count span { font-size: 12px; font-weight: 400; color: var(--text2); }
+.chip-kinds { font-size: 10px; color: var(--text3); }
+.chip-note { font-size: 10px; color: var(--text3); margin-top: 5px; line-height: 1.45; }
+
+/* LIST */
+.filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.filter-row select, .filter-row input {
+  font-size: 12px; padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text);
+  font-family: inherit;
+}
+.filter-row input { flex: 1; min-width: 160px; }
+.list-wrap { overflow-x: auto; }
+.list-table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 600px; }
+.list-table th {
+  text-align: left; font-size: 10px; font-weight: 600; color: var(--text3);
+  padding: 6px 10px; border-bottom: 1px solid var(--border);
+  white-space: nowrap; background: var(--surface);
+  position: sticky; top: 0;
+}
+.list-table td {
+  padding: 7px 10px; color: var(--text);
+  border-bottom: 1px solid var(--border2); vertical-align: top;
+}
+.list-table tr:last-child td { border-bottom: none; }
+.list-table tr:hover td { background: var(--surface2); }
+.rusak-badge {
+  display: inline-block; background: var(--red-bg); color: var(--red);
+  font-size: 9px; font-weight: 600; padding: 1px 5px;
+  border-radius: 3px; margin-left: 5px; vertical-align: middle;
+}
+.row-count { font-size: 10px; color: var(--text3); text-align: right; margin-top: 8px; }
+
+@media (max-width: 640px) {
+  .page-header { padding: 14px 16px; }
+  .main { padding: 16px 12px 40px; }
+  .metrics { grid-template-columns: repeat(2, 1fr); }
+  .row2 { grid-template-columns: 1fr; }
+  .prod-grid { grid-template-columns: 1fr; }
+  .infra-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <div>
+    <h1>PT. Aurora World Cianjur — Machinery Dashboard</h1>
+    <div class="sub">찌안주르 생산법인 기계류 현황 · Daftar Peralatan Produksi &nbsp;|&nbsp; 기준월: MEI 2026</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span class="updated-tag" id="updated-time"></span>
+    <button class="refresh-btn" onclick="renderAll()">↻ Refresh</button>
+  </div>
+</header>
+
+<main class="main">
+  <div class="metrics" id="metrics"></div>
+
+  <div class="card">
+    <div class="card-title">섹션별 보유 대수 · Jumlah Mesin per Seksi</div>
+    <div class="group-label">생산 공정 · Production Process · Proses Produksi</div>
+    <div class="prod-grid" id="prod-grid"></div>
+    <div class="group-label">지원 · 인프라 · Support &amp; Infrastructure · Pendukung</div>
+    <div class="infra-grid" id="infra-grid"></div>
+    <div class="scale-note">* 바 길이는 로그 스케일 (가독성 조정) · 수량은 실제값 표시</div>
+  </div>
+
+  <div class="row2">
+    <div class="card">
+      <div class="card-title">고장 장비 현황 · Mesin Rusak &nbsp;<span style="color:var(--red);font-size:10px;" id="rusak-badge"></span></div>
+      <div id="rusak-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">생산 공정별 구성 비율 · Proporsi per Proses Produksi</div>
+      <div class="chart-wrap">
+        <canvas id="pieChart" role="img" aria-label="생산 공정별 기계 대수 비율 도넛 차트"></canvas>
+      </div>
+      <div class="legend-row" id="pie-legend"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">섹션별 상세 · Detail per Seksi</div>
+    <div class="section-grid" id="section-grid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">기계 리스트 조회 · Machine List · Daftar Mesin</div>
+    <div class="filter-row">
+      <select id="filter-section" onchange="renderList()">
+        <option value="">전체 섹션 · All Sections</option>
+      </select>
+      <input id="filter-search" type="text" placeholder="기계명 / 모델 / 브랜드 검색..." oninput="renderList()">
+      <select id="filter-rusak" onchange="renderList()">
+        <option value="">전체</option>
+        <option value="rusak">고장 포함</option>
+        <option value="ok">정상만</option>
+      </select>
+    </div>
+    <div class="list-wrap">
+      <table class="list-table">
+        <thead>
+          <tr>
+            <th>섹션 · Section</th>
+            <th>기계명 · Machine</th>
+            <th>모델/타입 · Model</th>
+            <th>브랜드 · Brand</th>
+            <th style="text-align:right;">수량 · Qty</th>
+            <th>사양 · Spec</th>
+            <th>비고 · Remark</th>
+          </tr>
+        </thead>
+        <tbody id="list-body"></tbody>
+      </table>
+    </div>
+    <div class="row-count" id="row-count"></div>
+  </div>
+</main>
+
+<script>
+const SECTIONS = [
+  { id:1, group:'prod', color:'#1D9E75', name_kr:'봉제', name_en:'Sewing', name_id:'Jahit', kinds:5, total:1495, broken:5, note:'단침, 오버록, 벨크로, 포카 재단 포함. 전체의 약 66%' },
+  { id:2, group:'prod', color:'#D4537E', name_kr:'눈코 부착', name_en:'Eyes & Noses', name_id:'Mata & Hidung', kinds:3, total:231, broken:0, note:'초음파(Ultra Sonic) / Auto Iron / 눈 펀칭기' },
+  { id:3, group:'prod', color:'#D85A30', name_kr:'재단', name_en:'Cutting', name_id:'Cutting', kinds:8, total:138, broken:6, note:'레이저 재단 / 불재단(Heat Cutting, pile 원단 열선금형) / 프레스 재단' },
+  { id:4, group:'prod', color:'#639922', name_kr:'포장', name_en:'Packing', name_id:'Packing', kinds:5, total:94, broken:5, note:'Metal Detector, 블로워, 실링기, 스프레이, Pull Test' },
+  { id:5, group:'prod', color:'#BA7517', name_kr:'충진', name_en:'Stuffing', name_id:'Pengisian', kinds:9, total:41, broken:2, note:'솜 충진기, 유가론(Pellet) 자동 주머니 제조기(메신가론) 포함' },
+  { id:6, group:'prod', color:'#378ADD', name_kr:'자수', name_en:'Embroidery', name_id:'Bordir', kinds:7, total:24, broken:0, note:'헤드 수(1~20 kepala)별 자수기' },
+  { id:7, group:'prod', color:'#888780', name_kr:'원자재 창고', name_en:'Material Warehouse', name_id:'Gudang Material', kinds:1, total:2, broken:0, note:'원단 검사기(Cloth Inspecting)' },
+  { id:8, group:'infra', color:'#7F77DD', name_kr:'유틸리티/기타', name_en:'Utilities / Others', name_id:'Lain-lain', kinds:20, total:124, broken:3, note:'컴프레서, 지게차, 에어 드라이어, 저울, 바이어스 슬리팅기(LOIVA LV-3000A) 등' },
+  { id:9, group:'infra', color:'#5DCAA5', name_kr:'전기 패널', name_en:'Electricity / Panel', name_id:'Panel Listrik', kinds:25, total:76, broken:2, note:'트랜스포머, 배전반, 스태빌라이저, 섹션별 분전반 포함' },
+  { id:10, group:'infra', color:'#F09595', name_kr:'일반 (에어컨 등)', name_en:'General (AC etc.)', name_id:'Umum (AC dll.)', kinds:1, total:33, broken:0, note:'Standing / Split 에어컨 다수 브랜드' },
+];
+
+const BROKEN = [
+  { section:'재단 (Cutting)', machine:'불재단기 MAT 10000 N (Matsushita)', qty:5, note:'Gudang P1 보관' },
+  { section:'재단 (Cutting)', machine:'불재단기 MAT 5000 N (Matsushita)', qty:1, note:'Gudang P1 보관' },
+  { section:'봉제 (Jahit)', machine:'단침 SW Jarum 1 — DDL-8700 (Juki)', qty:3, note:'' },
+  { section:'봉제 (Jahit)', machine:'벨크로 미싱 — BUK E 2010 R (Bukwang)', qty:2, note:'' },
+  { section:'충진 (Pengisian)', machine:'솜 개면기 (Garding) — CDH 500.6.0406', qty:2, note:'' },
+  { section:'포장 (Packing)', machine:'실링기 Standing 60cm (Implu Siler)', qty:5, note:'' },
+  { section:'유틸리티 (Lain-lain)', machine:'가르니스 특수 미싱 (Warmap)', qty:1, note:'고장' },
+  { section:'유틸리티 (Lain-lain)', machine:'그라인더 Gerinda Duduk (ATS)', qty:1, note:'고장' },
+  { section:'유틸리티 (Lain-lain)', machine:'에어건 TB200 (Penguin)', qty:1, note:'' },
+  { section:'전기 패널', machine:'스태빌라이저 NR 7560 (Matsuta) — 60KW, 15KW', qty:2, note:'' },
+];
+
+const MACHINE_LIST = [
+  { section:'자수', machine:'자수기 20헤드', model:'SH-WE 920-55', brand:'SUNSTAR', qty:2, spec:'2,500W', remark:'' },
+  { section:'자수', machine:'자수기 20헤드', model:'SH-WE 920-75', brand:'SUNSTAR', qty:3, spec:'', remark:'' },
+  { section:'자수', machine:'자수기 20헤드', model:'SWF/SH-WE 920-75', brand:'SUNSTAR', qty:4, spec:'', remark:'' },
+  { section:'자수', machine:'자수기 20헤드', model:'SWF/GE-WE 920-55', brand:'SUNSTAR', qty:2, spec:'3,000W', remark:'' },
+  { section:'자수', machine:'자수기 20헤드', model:'SWF/GE-WD 920-55', brand:'SUNSTAR', qty:2, spec:'3,000W', remark:'' },
+  { section:'자수', machine:'자수기 16헤드', model:'JYF 916-16002', brand:'SONG', qty:2, spec:'1,500W', remark:'' },
+  { section:'자수', machine:'자수기 15헤드', model:'SONG 915', brand:'SONG', qty:1, spec:'', remark:'' },
+  { section:'자수', machine:'자수기 12헤드', model:'SONG 912', brand:'SONG', qty:1, spec:'', remark:'' },
+  { section:'자수', machine:'자수기 6헤드', model:'SONG 906', brand:'SONG', qty:1, spec:'1,000W', remark:'' },
+  { section:'자수', machine:'자수기 1헤드', model:'SWF/ES-T1201', brand:'SUNSTAR', qty:1, spec:'440W', remark:'Sample Room' },
+  { section:'자수', machine:'자수기 수동', model:'LZ 271', brand:'JUKI', qty:5, spec:'250W', remark:'Gudang P1:4 / Bordir:1' },
+  { section:'재단', machine:'레이저 재단기 2헤드', model:'LS 1610 ST-SCCD 2KPL', brand:'JS', qty:12, spec:'5KW', remark:'카메라 장착' },
+  { section:'재단', machine:'레이저 재단기 4헤드', model:'HG 1610 4KPL', brand:'HENSANG', qty:3, spec:'2KW', remark:'논카메라' },
+  { section:'재단', machine:'레이저 재단기 4헤드', model:'JS-1610F-AUTO 4KPL', brand:'JS', qty:53, spec:'5KW', remark:'' },
+  { section:'재단', machine:'불재단기 (Heat Cutting)', model:'MAT 10000 N', brand:'MATSUSHITA', qty:39, spec:'10KW', remark:'Gudang P1 · 고장 5대', rusak:true },
+  { section:'재단', machine:'불재단기 (Heat Cutting)', model:'MAT 5000 N', brand:'MATSUSHITA', qty:15, spec:'5KW', remark:'Gudang P1 · 고장 1대', rusak:true },
+  { section:'재단', machine:'프레스 재단기 미니 20T', model:'LRCDJ 20T / GSB 2C', brand:'DONGGUANG', qty:5, spec:'2KW', remark:'' },
+  { section:'재단', machine:'프레스 재단기 30T', model:'ZC 507 30T', brand:'ZINGCHENG', qty:5, spec:'3KW', remark:'Gudang P1:2' },
+  { section:'재단', machine:'프레스 재단기 60T', model:'HK-083LM', brand:'HOKI', qty:3, spec:'5KW', remark:'' },
+  { section:'재단', machine:'컷팅 레마르', model:'CZD B 11', brand:'KAISIMAN', qty:2, spec:'160W', remark:'' },
+  { section:'재단', machine:'핸드 커팅기', model:'KM 8 INC', brand:'MACK', qty:1, spec:'660W', remark:'' },
+  { section:'봉제', machine:'단침 (SW Jarum 1)', model:'KM 250B / DIREK F3 외', brand:'SUNSTAR / JACK 외', qty:1468, spec:'250~550W', remark:'DDL-8700 3대 고장', rusak:true },
+  { section:'봉제', machine:'이침 (SW Jarum 2)', model:'KM 740 / KM 827 외', brand:'SUNSTAR / BROTHER', qty:4, spec:'250W', remark:'' },
+  { section:'봉제', machine:'오버록 (Obras)', model:'FY 7373 / C26120E 외', brand:'YAMATA / YAMATO', qty:5, spec:'250~550W', remark:'' },
+  { section:'봉제', machine:'벨크로 미싱 (Felcro Bass)', model:'BUK E 2010R 외', brand:'BUKWANG / HOKI 외', qty:16, spec:'550~600W', remark:'2대 고장', rusak:true },
+  { section:'봉제', machine:'벨크로 재단기 (Potong Felcro)', model:'TBC 38', brand:'TAEWOO', qty:2, spec:'600W', remark:'' },
+  { section:'눈코 부착', machine:'초음파 (Ultra Sonic)', model:'FRC 2050 T', brand:'FRC KOREA', qty:142, spec:'250W', remark:'' },
+  { section:'눈코 부착', machine:'오토 아이언 (Auto Iron)', model:'FRC 600 WD', brand:'FRC KOREA', qty:69, spec:'250W', remark:'' },
+  { section:'눈코 부착', machine:'눈 펀칭기 (Eye Punching)', model:'CDH DY 100', brand:'-', qty:20, spec:'-', remark:'' },
+  { section:'충진', machine:'개면기 (Garding)', model:'CDH 500.6.0406 외', brand:'-', qty:5, spec:'2.5KW', remark:'2대 고장', rusak:true },
+  { section:'충진', machine:'충진기 (Stuffing)', model:'CDH-SM-LD300-J0606 외', brand:'-', qty:19, spec:'2,500W', remark:'' },
+  { section:'충진', machine:'유가론 제조기 (Mesin Garon)', model:'DG AUTO 730', brand:'-', qty:6, spec:'1.5KW', remark:'유가론(Pellet) 자동 주머니 제조' },
+  { section:'충진', machine:'솜 이송/저장 설비', model:'-', brand:'HOKI', qty:11, spec:'3,000W', remark:'Delivery / Storage / Pneumatic / Bagging' },
+  { section:'포장', machine:'메탈 디텍터 (Metal Detector)', model:'FRC-35050A 외', brand:'FRC KOREA / TONGLI', qty:37, spec:'50~65W', remark:'' },
+  { section:'포장', machine:'블로워 (Blower)', model:'CDH-XC 1250', brand:'-', qty:4, spec:'1,000W', remark:'' },
+  { section:'포장', machine:'실링기 (Seeling)', model:'Standing 60cm 외', brand:'IMPLU SILER', qty:16, spec:'780W', remark:'5대 고장', rusak:true },
+  { section:'포장', machine:'스프레이 (Spray)', model:'BRUS 123', brand:'IWATA', qty:32, spec:'-', remark:'' },
+  { section:'포장', machine:'풀 테스트 (Pull Test)', model:'IMADA', brand:'IMADA', qty:5, spec:'-', remark:'' },
+  { section:'원자재 창고', machine:'원단 검사기 (Cloth Inspecting)', model:'ROLLING', brand:'PABRIC INSPECTION', qty:2, spec:'1,100W', remark:'' },
+  { section:'유틸리티/기타', machine:'컴프레서 (Kompresor)', model:'SCREW 100HP 외', brand:'HANSIN / KYUNGWON 외', qty:8, spec:'2.25~75KW', remark:'' },
+  { section:'유틸리티/기타', machine:'에어 드라이어 (Air Dryer)', model:'HYD-100HT 외', brand:'HANSIN', qty:7, spec:'680~3,000W', remark:'' },
+  { section:'유틸리티/기타', machine:'에어 히터 (Air Heater)', model:'FRC-YY-RFJ-01', brand:'FRC', qty:1, spec:'9,900W', remark:'' },
+  { section:'유틸리티/기타', machine:'컨베이어 (Conveyor)', model:'LOCAL', brand:'WARMAP', qty:2, spec:'3KW', remark:'' },
+  { section:'유틸리티/기타', machine:'가르니스 특수 미싱 (Garnis)', model:'LOCAL', brand:'WARMAP', qty:1, spec:'2KW', remark:'고장', rusak:true },
+  { section:'유틸리티/기타', machine:'핸드 파렛트 (Hand Pallet)', model:'MANUAL 3TON 외', brand:'KRISBOW', qty:6, spec:'-', remark:'' },
+  { section:'유틸리티/기타', machine:'지게차 (Forklift)', model:'MATIC', brand:'TOYOTA', qty:1, spec:'-', remark:'' },
+  { section:'유틸리티/기타', machine:'저울 (Timbangan)', model:'STANDING 300KG 외', brand:'EXCELLENT / MASPION', qty:28, spec:'DC 9V', remark:'' },
+  { section:'유틸리티/기타', machine:'에어 리시버 탱크', model:'AM 227 외', brand:'ALADIN', qty:6, spec:'500~2,000L', remark:'' },
+  { section:'유틸리티/기타', machine:'에어건 (Torn Air)', model:'TB100 외', brand:'PAUS / PENGUIN', qty:22, spec:'-', remark:'TB200 1대 고장', rusak:true },
+  { section:'유틸리티/기타', machine:'워터 펌프 (Pompa Air)', model:'PS 1413 외', brand:'FRANKLIN / SHIMIZU', qty:12, spec:'200~5,500W', remark:'' },
+  { section:'유틸리티/기타', machine:'바이어스 슬리팅기 (MC Slitting Bayas)', model:'LV-3000A', brand:'LOIVA (한국)', qty:1, spec:'1.2KW', remark:'바이어스 테이프 원단 자동 재단' },
+  { section:'유틸리티/기타', machine:'CNC 기계 (MC CNC)', model:'-', brand:'HOKI', qty:1, spec:'-', remark:'' },
+  { section:'유틸리티/기타', machine:'그라인더 (Gerinda Tangan)', model:'BCH-4INC', brand:'BOSCH', qty:3, spec:'260W', remark:'' },
+  { section:'유틸리티/기타', machine:'그라인더 거치형 (Gerinda Duduk)', model:'-', brand:'ATS', qty:1, spec:'250W', remark:'고장', rusak:true },
+  { section:'유틸리티/기타', machine:'전동 드릴 외', model:'M-2100-B 외', brand:'MODERN / RYU 외', qty:8, spec:'260~1,500W', remark:'' },
+  { section:'유틸리티/기타', machine:'실크스크린기 (Sablon)', model:'WJ 38', brand:'WEJIE', qty:1, spec:'2,200W', remark:'' },
+  { section:'유틸리티/기타', machine:'핸드 메탈 (Hand Metal)', model:'FRC 10M', brand:'FRC KOREA', qty:10, spec:'DC 6V', remark:'' },
+  { section:'전기 패널', machine:'트랜스포머 (Trafo Induk)', model:'TP 630', brand:'TRAFINDO', qty:2, spec:'630 KVA', remark:'' },
+  { section:'전기 패널', machine:'배전반 (Panel Gardu Induk I)', model:'SM6-CM-IAC125 외', brand:'SCHNEIDER / LS', qty:11, spec:'630 KVA', remark:'Incoming / Outgoing' },
+  { section:'전기 패널', machine:'스태빌라이저 (Stabilizer)', model:'NR 7560 외', brand:'MATSUTA / MATSUSHITA', qty:12, spec:'1~60KW', remark:'NR7560 2대 고장', rusak:true },
+  { section:'전기 패널', machine:'분전반 — 봉제 (Panel Sewing)', model:'-', brand:'LS', qty:8, spec:'40~300A', remark:'Sewing 1~8' },
+  { section:'전기 패널', machine:'분전반 — 재단 프레스', model:'-', brand:'LS', qty:3, spec:'100~150A', remark:'' },
+  { section:'전기 패널', machine:'분전반 — 레이저', model:'-', brand:'LS', qty:4, spec:'150~250A', remark:'' },
+  { section:'전기 패널', machine:'분전반 — 기타 공정', model:'-', brand:'LS', qty:48, spec:'30~225A', remark:'자수/충진/포장/창고 등' },
+  { section:'일반 (에어컨 등)', machine:'에어컨 스탠딩 (AC Standing)', model:'STANDING', brand:'LG / AUX / DAIKIN', qty:9, spec:'3~5PK', remark:'' },
+  { section:'일반 (에어컨 등)', machine:'에어컨 스플릿 (AC Split)', model:'SPLIT', brand:'SAMSUNG / DAIKIN 외', qty:24, spec:'1~2PK', remark:'LT1 Mess 1, Mess 2 포함' },
+];
+
+let pieInst = null;
+
+function logPct(val, groupMax) {
+  if (val <= 0) return 0;
+  return Math.min(100, (Math.log10(val + 1) / Math.log10(groupMax + 1)) * 100);
+}
+
+function renderMetrics() {
+  const total = SECTIONS.reduce((a,s)=>a+s.total,0);
+  const kinds = SECTIONS.reduce((a,s)=>a+s.kinds,0);
+  const broken = BROKEN.reduce((a,b)=>a+b.qty,0);
+  document.getElementById('metrics').innerHTML = [
+    { lbl:'총 보유 대수\nTotal / Total Mesin', val:total.toLocaleString()+'대' },
+    { lbl:'기계 종류 수\nTypes / Jenis Mesin', val:kinds+'종' },
+    { lbl:'관리 섹션 수\nTotal Sections / Jumlah Seksi', val:SECTIONS.length+'개' },
+    { lbl:'고장 대수\nBroken / Mesin Rusak', val:broken+'대', danger:true },
+  ].map(i=>`<div class="metric ${i.danger?'danger':''}"><div class="lbl">${i.lbl.replace(/\n/g,'<br>')}</div><div class="val">${i.val}</div></div>`).join('');
+}
+
+function makeSecBox(s, groupMax) {
+  const pct = logPct(s.total, groupMax);
+  const bpct = s.broken ? (s.broken / s.total) * pct : 0;
+  return `<div class="sec-box">
+    <div class="sec-name">${s.name_kr} · ${s.name_en}</div>
+    <div class="bar-track">
+      <div class="bar-total" style="width:${pct.toFixed(1)}%;background:${s.color};"></div>
+      ${s.broken ? `<div class="bar-broken" style="width:${bpct.toFixed(1)}%;"></div>` : ''}
+    </div>
+    <div class="sec-meta">
+      <span>${s.total.toLocaleString()}대</span>
+      ${s.broken ? `<span class="broken-tag">고장 ${s.broken}대</span>` : `<span style="color:var(--text3);">고장 없음</span>`}
+    </div>
+  </div>`;
+}
+
+function renderSecBoxes() {
+  const prod = SECTIONS.filter(s=>s.group==='prod');
+  const infra = SECTIONS.filter(s=>s.group==='infra');
+  const prodMax = Math.max(...prod.map(s=>s.total));
+  const infraMax = Math.max(...infra.map(s=>s.total));
+  document.getElementById('prod-grid').innerHTML = prod.map(s=>makeSecBox(s,prodMax)).join('');
+  document.getElementById('infra-grid').innerHTML = infra.map(s=>makeSecBox(s,infraMax)).join('');
+}
+
+function renderRusak() {
+  const total = BROKEN.reduce((a,b)=>a+b.qty,0);
+  document.getElementById('rusak-badge').textContent = `(총 ${total}대)`;
+  document.getElementById('rusak-list').innerHTML = BROKEN.map(b=>`
+    <div class="rusak-item">
+      <div class="rusak-dot"></div>
+      <div>
+        <div class="rusak-name">${b.machine}</div>
+        <div class="rusak-detail">${b.section} · ${b.qty}대 고장${b.note?' · '+b.note:''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderPie() {
+  const prod = SECTIONS.filter(s=>s.group==='prod');
+  const total = prod.reduce((a,s)=>a+s.total,0);
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  if (pieInst) pieInst.destroy();
+  pieInst = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels:prod.map(s=>s.name_kr), datasets:[{ data:prod.map(s=>s.total), backgroundColor:prod.map(s=>s.color), borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.label}: ${c.parsed.toLocaleString()}대 (${((c.parsed/total)*100).toFixed(1)}%)`}} }
+    }
+  });
+  document.getElementById('pie-legend').innerHTML = prod.map(s=>
+    `<div class="legend-item"><div class="legend-dot" style="background:${s.color}"></div>${s.name_kr} ${((s.total/total)*100).toFixed(1)}%</div>`
+  ).join('');
+}
+
+function renderSectionGrid() {
+  document.getElementById('section-grid').innerHTML = SECTIONS.map(s=>`
+    <div class="section-chip">
+      <div class="chip-kr">${s.name_kr}</div>
+      <div class="chip-en">${s.name_en}</div>
+      <div class="chip-id">${s.name_id}</div>
+      <div class="chip-count" style="color:${s.color}">${s.total.toLocaleString()}<span>대</span></div>
+      <div class="chip-kinds">${s.kinds}종류 · ${s.kinds} types</div>
+      <div class="chip-note">${s.note}</div>
+    </div>`).join('');
+}
+
+function initFilters() {
+  const sel = document.getElementById('filter-section');
+  [...new Set(MACHINE_LIST.map(m=>m.section))].forEach(s=>{
+    const o = document.createElement('option'); o.value=s; o.textContent=s; sel.appendChild(o);
+  });
+}
+
+function renderList() {
+  const secVal = document.getElementById('filter-section').value;
+  const searchVal = document.getElementById('filter-search').value.toLowerCase();
+  const rusakVal = document.getElementById('filter-rusak').value;
+  const rows = MACHINE_LIST.filter(m=>{
+    if (secVal && m.section!==secVal) return false;
+    if (searchVal && !`${m.machine}${m.model}${m.brand}`.toLowerCase().includes(searchVal)) return false;
+    if (rusakVal==='rusak' && !m.rusak) return false;
+    if (rusakVal==='ok' && m.rusak) return false;
+    return true;
+  });
+  document.getElementById('list-body').innerHTML = rows.map(m=>`
+    <tr>
+      <td style="color:var(--text2);white-space:nowrap;">${m.section}</td>
+      <td>${m.machine}${m.rusak?'<span class="rusak-badge">고장</span>':''}</td>
+      <td style="color:var(--text2);">${m.model}</td>
+      <td style="color:var(--text2);">${m.brand}</td>
+      <td style="text-align:right;font-weight:600;">${m.qty}</td>
+      <td style="color:var(--text3);">${m.spec}</td>
+      <td style="color:var(--text3);">${m.remark}</td>
+    </tr>`).join('');
+  document.getElementById('row-count').textContent = `${rows.length}개 항목 표시 중 · Menampilkan ${rows.length} item`;
+}
+
+function renderAll() {
+  renderMetrics(); renderSecBoxes(); renderRusak(); renderPie(); renderSectionGrid(); renderList();
+  document.getElementById('updated-time').textContent =
+    `업데이트: ${new Date().toLocaleString('ko-KR')}`;
+}
+
+initFilters();
+renderAll();
+</script>
+</body>
+</html>
